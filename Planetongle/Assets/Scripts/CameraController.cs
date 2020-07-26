@@ -8,19 +8,6 @@ public class CameraController : MonoBehaviour
 
     public Camera Camera;
 
-    public float PlanetRotateSpeed;
-    public float SprintSpeedMultiplier;
-
-    public float CameraZoomDefault;
-    public float CameraZoomMin;
-    public float CameraZoomMax;
-
-    public float CameraZoomFractionToGoToFullView;
-
-    public float ViewTransitionTime;
-
-    public float FullViewCameraSize = 100f;
-
     bool _isLerpingPlanetView;
     bool _isAtFullPlanetView;
 
@@ -32,19 +19,18 @@ public class CameraController : MonoBehaviour
         transform.localPosition = Vector3.zero;
         transform.localRotation = Quaternion.identity;
 
-        Camera.orthographicSize = CameraZoomDefault;
+        Camera.orthographicSize = RotatingAround.CameraZoomDefault;
     }
 
     void Update()
     {
-        updateZooming();
+        if (!_isLerpingPlanetView)
+            updateZooming();
 
-        if (_cameraZoomFraction < CameraZoomFractionToGoToFullView)
+        if (_cameraZoomFraction < RotatingAround.CameraZoomFractionToGoToFullView)
         {
             if (_isAtFullPlanetView)
             {
-                RotatingAround.CameraRotator.localEulerAngles = Vector3.zero;
-
                 Camera.transform.SetParent(RotatingAround.GroundViewCameraParent);
                 Camera.transform.localPosition = Vector3.zero;
                 Camera.transform.localEulerAngles = Vector3.zero;
@@ -74,21 +60,16 @@ public class CameraController : MonoBehaviour
 
         Camera.transform.SetParent(RotatingAround.FullViewCameraParent, true);
 
-        float startZAngle = transform.localEulerAngles.z;
         Vector3 startLocalPosition = transform.localPosition;
 
         float startCameraSize = Camera.orthographicSize;
 
         float timer = 0f;
-        while (timer < ViewTransitionTime)
+        while (timer < RotatingAround.CameraViewTransitionTime)
         {
-            Vector3 eulerAngles = transform.localEulerAngles;
-            eulerAngles.z = Mathf.LerpAngle(startZAngle, 0f, timer / ViewTransitionTime);
-            transform.localEulerAngles = eulerAngles;
+            transform.localPosition = Vector3.Lerp(startLocalPosition, Vector3.zero, timer / RotatingAround.CameraViewTransitionTime);
 
-            transform.localPosition = Vector3.Lerp(startLocalPosition, Vector3.zero, timer / ViewTransitionTime);
-
-            Camera.orthographicSize = Mathf.Lerp(startCameraSize, FullViewCameraSize, timer / ViewTransitionTime);
+            Camera.orthographicSize = Mathf.Lerp(startCameraSize, RotatingAround.FullViewCameraSize, timer / RotatingAround.CameraViewTransitionTime);
 
             timer += Time.deltaTime;
             yield return 0;
@@ -111,32 +92,76 @@ public class CameraController : MonoBehaviour
         float angleDelta = 0f;
         if (moveLeft)
         {
-            angleDelta = PlanetRotateSpeed * Time.deltaTime;
+            angleDelta = RotatingAround.CameraRotateSpeed * Time.deltaTime;
         }
         else if (moveRight)
         {
-            angleDelta = PlanetRotateSpeed * Time.deltaTime * -1f;
+            angleDelta = RotatingAround.CameraRotateSpeed * Time.deltaTime * -1f;
         }
 
         if (sprint)
-            angleDelta *= SprintSpeedMultiplier;
+            angleDelta *= RotatingAround.CameraSprintSpeedMultiplier;
 
         RotatingAround.RotateCameraArondCenter(angleDelta);
     }
 
     void updateFullPlanetView()
     {
+        if (InputManager.Instance.IsInputActive(ActionType.PlanetFullViewSelectPosition))
+        {
+            float zAngleDelta = RotatingAround.GetCameraZAngleDeltaTo(Camera.ScreenToWorldPoint(Input.mousePosition));
+
+            Camera.transform.SetParent(RotatingAround.GroundViewCameraParent, true);
+
+            StartCoroutine(lerpToGroundView(zAngleDelta));
+        }
+    }
+    IEnumerator lerpToGroundView(float zAngleDelta)
+    {
+        _isLerpingPlanetView = true;
+
+        Vector3 startCameraLocalPosition = Camera.transform.localPosition;
+        Vector3 startCameraLocalEulerAngles = Camera.transform.localEulerAngles;
+
+        float startZ = RotatingAround.CameraRotator.localEulerAngles.z;
+        float targetAngle = startZ + zAngleDelta;
+
+        float startCameraSize = Camera.orthographicSize;
+
+        float timer = 0f;
+        while (timer < RotatingAround.CameraViewTransitionTime)
+        {
+            float fraction = timer / RotatingAround.CameraViewTransitionTime;
+
+            Camera.transform.localPosition = Vector3.Lerp(startCameraLocalPosition, Vector3.zero, fraction);
+            Camera.transform.localEulerAngles = Utils.LerpEulerAngles(startCameraLocalEulerAngles, Vector3.zero, fraction);
+
+            RotatingAround.SetCameraAngleZ(Mathf.LerpAngle(startZ, targetAngle, fraction));
+
+            Camera.orthographicSize = Mathf.Lerp(startCameraSize, RotatingAround.CameraViewTransitionTime, fraction);
+            updateZoomFraction();
+
+            timer += Time.deltaTime;
+            yield return 0;
+        }
+
+        _isLerpingPlanetView = false;
+        _isAtFullPlanetView = false;
     }
 
     void updateZooming()
     {
         float scrollDelta = Input.mouseScrollDelta.y;
 
-        float size = Camera.orthographicSize + (scrollDelta * -1);
-        size = Mathf.Clamp(size, CameraZoomMin, CameraZoomMax);
+        float size = Camera.orthographicSize - scrollDelta;
+        size = Mathf.Clamp(size, RotatingAround.CameraZoomMin, RotatingAround.CameraZoomMax);
 
         Camera.orthographicSize = size;
+        updateZoomFraction();
+    }
 
-        _cameraZoomFraction = (size - CameraZoomMin) / CameraZoomMax;
+    void updateZoomFraction()
+    {
+        _cameraZoomFraction = (Camera.orthographicSize - RotatingAround.CameraZoomMin) / RotatingAround.CameraZoomMax;
     }
 }

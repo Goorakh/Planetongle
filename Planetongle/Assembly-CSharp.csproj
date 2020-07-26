@@ -56,12 +56,15 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Assets\Scripts\Input\InputManager.cs" />
-    <Compile Include="Assets\Scripts\Planet.cs" />
+    <Compile Include="Assets\Scripts\Planets\Planet.cs" />
     <Compile Include="Assets\Scripts\Input\InputData.cs" />
     <Compile Include="Assets\Scripts\Input\InputType.cs" />
     <Compile Include="Assets\Scripts\Singleton.cs" />
     <Compile Include="Assets\Scripts\Input\ActionType.cs" />
     <Compile Include="Assets\Scripts\CameraController.cs" />
+    <Compile Include="Assets\Scripts\Utils.cs" />
+    <Compile Include="Assets\Scripts\GravityRigidbody.cs" />
+    <Compile Include="Assets\Scripts\Planets\PlanetManager.cs" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="UnityEngine">
