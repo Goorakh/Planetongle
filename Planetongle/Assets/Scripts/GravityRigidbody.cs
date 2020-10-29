@@ -19,7 +19,7 @@ public class GravityRigidbody : MonoBehaviour
     void FixedUpdate()
     {
         List<ForceData> forces = PlanetManager.Instance.GetForcesFromAllPlanets(this);
-
+        
         Vector2 totalForce = forces.Total();
 
         if (totalForce.magnitude <= 0.1f)
